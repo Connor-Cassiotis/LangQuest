@@ -17,13 +17,13 @@ export const Challenge = ({options, onSelect, status, selectedOption, disabled, 
             "grid gap-2",
             type === "ASSIST" && "grid-cols-1",
             type === "SELECT" && "grid-cols-2 lg:grd-cols-[repeat(auto-fit,minmax(0,1fr))]")}>
-            {options.map((option) => (
+            {options.map((option, i) => (
                 <Card
                     key={option.id}
                     id={option.id}
                     title={option.text}
                     imageSrc={option.imageSrc}
-                    shortcut={'${i + 1}'}
+                    shortcut={` ${i + 1}`}
                     selected={selectedOption === option.id}
                     onClick={() => onSelect(option.id)}
                     status={status}
