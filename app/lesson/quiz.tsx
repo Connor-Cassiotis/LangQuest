@@ -1,11 +1,20 @@
 "use client";
 
 import { challengeOptions, challenges } from "@/db/schema";
-import { useState } from "react";
+import { use, useState, useTransition, useEffect } from "react";
 import { Header } from "./header";
 import { QuestionBubble } from "./question-bubble";
 import { Challenge } from "./challenge";
 import { Footer } from "./footer";
+import { start } from "repl";
+import { upsertChallengeProgress } from "@/actions/challenge-progress";
+import { toast } from "sonner";
+import { reduceHearts } from "@/actions/user-progress";
+import { useAudio, useWindowSize } from "react-use";
+import Image from "next/image";
+import { ResultCard } from "./result-card";
+import { useRouter } from "next/navigation";
+import Confetti from 'react-confetti';
 
 type Props = {
     initialPercentage: number;
@@ -24,6 +33,13 @@ export const Quiz = ({
     initialLessonChallenges,
     userSubscription
 }: Props) => {
+    const [finishAudio] = useAudio({src: "finish.mp3", autoPlay: true})
+    const { width, height } = useWindowSize();
+    const [pending, startTransition] = useTransition();
+    const [lessonId, setLessonId] = useState(initialLessonId);
+    const router = useRouter();
+    const [correctAudio, correctState, correctControls] = useAudio({src: "/correct.wav"})
+    const [incorrectAudio, incorrectState, incorrectControls] = useAudio({src: "/incorrect.wav"})
     const [hearts, setHearts] = useState(initialHearts);
     const [percentage, setPercentage] = useState(initialPercentage);
     const [challenges] = useState(initialLessonChallenges);
@@ -34,6 +50,11 @@ export const Quiz = ({
 
     const [selectedOption, setSelectedOption] = useState<number>();
     const [status, setStatus] = useState<"correct" | "wrong" | "none">("none");
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const challenge = challenges[activeIndex];
     const options = challenge?.challengeOptions ?? [];
@@ -70,17 +91,105 @@ export const Quiz = ({
             return;
         }
         if(correctOption && correctOption.id === selectedOption) {
-            console.log("Correct option!");
+            startTransition(() => {
+                upsertChallengeProgress(challenge.id)
+                .then((response) => {
+                    if(response?.error === "heart") {
+                        console.error("missing hearts");
+                        return;
+                    
+                    }
+                    correctControls.play();
+                    setStatus("correct");
+                    setPercentage((prev) => prev + 100 / challenges.length);
+
+                    if(initialPercentage === 100){
+                        setHearts((prev) => Math.min(prev + 1, 5));
+                    }
+                })
+                .catch(() => toast.error("There was an error saving your progress"));
+            });
 
         } else {
-            console.log("Wrong option!");
+            startTransition(() => {
+                reduceHearts(challenge.id
+                ).then((response) => {
+                    if(response?.error === "heart") {
+                        console.error("missing hearts");
+                        return;
+                    }
+                    incorrectControls.play();
+                    setStatus("wrong");
+
+                    if (!response?.error) {
+                        setHearts((prev) => Math.max(prev - 1, 0));
+                    }
+                })
+                .catch(() => toast.error("There was an error"));
+            });
+
         }
 
-    }
+    };
+    if (!challenge) {
+        return (
+            <>
+                {finishAudio}
+                {isMounted && (
+                    <Confetti 
+                        recycle={false}
+                        numberOfPieces={500}
+                        tweenDuration={100000}
+                        width={width}
+                        height={height}
+                    />
+                )}
+                <div className="flex flex-col gap-y-4 lg:gap-y-8 max-w-lg mx-auto text-center items-center justify-center h-full">
+                    <Image 
+                        src="/finish.svg"
+                        alt="Finish"
+                        className="hidden lg:block mx-auto"
+                        width={100}
+                        height={100}
+                    />
+                    <Image 
+                        src="/finish.svg"
+                        alt="Finish"
+                        className="block lg:hidden mx-auto"
+                        width={50}
+                        height={50}
+                    />
+                    <h1 className="text-xl lg:text-3xl font-bold text-neutral-700">
+                        Great job! <br /> You've completed the lesson.
+                    </h1>
+                    <div className="flex items-center gap-x-4 w-full">
+                        <ResultCard
+                            variant="points"
+                            value={challenges.length * 10}
+                        />
+                        <ResultCard
+                            variant="hearts"
+                            value={hearts}
+                        />
+                    </div>
+                </div>
+                <Footer 
+                    lessonID={lessonId}
+                    status="completed"
+                    onCheck={() => router.push("/learn")}
+                />
+            </>
+        );
 
+    }
     const title = challenge.type === "ASSIST" ? "Select the correct meaning" : challenge.question;
     return (
         <>
+            {/* Audio elements for sound effects */}
+            <div style={{ display: 'none' }}>
+                {correctAudio}
+                {incorrectAudio}
+            </div>
            <Header 
                 hearts={hearts}
                 percentage={percentage}
@@ -101,7 +210,7 @@ export const Quiz = ({
                             onSelect={onSelect}
                             status={status}
                             selectedOption={selectedOption}
-                            disabled={false}
+                            disabled={pending}
                             type={challenge.type}
                         />
                     </div>
@@ -109,7 +218,7 @@ export const Quiz = ({
             </div>
            </div>
            <Footer
-                disabled={!selectedOption}
+                disabled={!selectedOption || pending}
                 status={status}
                 onCheck={onContinue}
            />
