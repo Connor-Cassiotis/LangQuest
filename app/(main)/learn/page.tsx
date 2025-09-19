@@ -3,16 +3,19 @@ import { FeedWrapper } from "@/components/feed-wrapper";
 import { Header } from "./header";
 import { UserProgress } from "@/components/user-progress";
 import { title } from "process";
-import { getUnits, getUserProgress, getCourseProgress, getLessonPercentage } from "@/db/queries";
+import { getUnits, getUserProgress, getCourseProgress, getLessonPercentage, getUserSubscription } from "@/db/queries";
 import { redirect } from "next/navigation";
 import { Unit } from "./unit";
+import { Promo } from "@/components/ui/promo";
+import { Quests } from "@/components/ui/quests";
 
 const LearnPage = async () => {
     const userProgressData = getUserProgress();
     const unitsData = getUnits();
     const courseProgressData = getCourseProgress();
     const lessonPercentageData = getLessonPercentage();
-    const [userProgress, units, courseProgress, lessonPercentage] = await Promise.all([userProgressData, unitsData, courseProgressData, lessonPercentageData]);
+    const userSubscriptionData = getUserSubscription();
+    const [userProgress, units, courseProgress, lessonPercentage, userSubscription] = await Promise.all([userProgressData, unitsData, courseProgressData, lessonPercentageData, userSubscriptionData]);
 
     if (!userProgress || !userProgress.activeCourse) {
         redirect("/courses");
@@ -20,6 +23,7 @@ const LearnPage = async () => {
     if (!courseProgress) {
         redirect("/courses");
     }
+    const isPro = !!userSubscription?.isActive;
     return (
         <div>
             <div className="flex flex-row-reverse gap-[48px] px-6">
@@ -28,8 +32,10 @@ const LearnPage = async () => {
                         activeCourse={ userProgress.activeCourse }
                         hearts={userProgress.hearts}
                         points={userProgress.points}
-                        hasActiveSubscription={false}
+                        hasActiveSubscription={isPro}
                     />
+                    {!isPro && (<Promo />)}
+                    <Quests points={userProgress.points} />
                 </StickyWrapper>
                 <FeedWrapper>
                     <Header title={userProgress.activeCourse.title} />

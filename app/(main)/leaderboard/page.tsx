@@ -7,6 +7,8 @@ import { redirect } from "next/navigation";
 import {  } from "@/db/schema";
 import { Separator } from "@radix-ui/react-separator";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Promo } from "@/components/ui/promo";
+import { Quests } from "@/components/ui/quests";
 
 const LeaderBoardPage = async () => {
     const userSubscriptionsData = getUserSubscription();
@@ -17,6 +19,8 @@ const LeaderBoardPage = async () => {
     if (!userProgress || !userProgress.activeCourse) {
         redirect("/courses");
     }
+
+    const isPro = !!userSubscriptions?.isActive;
     
     return (
         <div className="flex flex-row-reverse gap-[48px] px-6">
@@ -27,6 +31,8 @@ const LeaderBoardPage = async () => {
                     points ={userProgress.points}
                     hasActiveSubscription={!!userSubscriptions?.isActive}
                 />
+                {!isPro && (<Promo />)}
+                <Quests points={userProgress.points} />
             </StickyWrapper>
             <FeedWrapper>
                 <div className="w-full flex flex-col items-center">
