@@ -21,8 +21,9 @@ export async function POST(req: Request) {
             signature,
             process.env.STRIPE_WEBHOOK_SECRET as string
         );
-    } catch (error: any) {
-        return new NextResponse(`Webhook Error: ${error.message}` , { status: 400 });
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return new NextResponse(`Webhook Error: ${errorMessage}` , { status: 400 });
     }
 
     // Check if we've already processed this event
@@ -50,8 +51,9 @@ export async function POST(req: Request) {
             }
 
             // Validate current_period_end timestamp
-            const currentPeriodEnd = (subscription as any).current_period_end;
-            if (!currentPeriodEnd || isNaN(currentPeriodEnd) || currentPeriodEnd <= 0) {
+            const subscriptionData = subscription as unknown as Stripe.Subscription & { current_period_end: number };
+            const currentPeriodEnd = subscriptionData.current_period_end;
+            if (!currentPeriodEnd || currentPeriodEnd <= 0) {
                 processedEvents.add(event.id);
                 return new NextResponse(null, { status: 200 });
             }
@@ -83,13 +85,14 @@ export async function POST(req: Request) {
         if (event.type === "invoice.payment_succeeded" || event.type === "invoice_payment.paid" || event.type === "invoice.paid") {
             const invoice = event.data.object as Stripe.Invoice;
             
-            if (!(invoice as any).subscription) {
+            const invoiceData = invoice as Stripe.Invoice & { subscription?: string };
+            if (!invoiceData.subscription) {
                 processedEvents.add(event.id);
                 return new NextResponse(null, { status: 200 });
             }
             
             const invoiceSubscription = await stripe.subscriptions.retrieve(
-                (invoice as any).subscription as string,
+                invoiceData.subscription as string,
             );
 
             // Validate invoice subscription data
@@ -99,8 +102,9 @@ export async function POST(req: Request) {
             }
 
             // Validate current_period_end timestamp for invoice
-            const invoiceCurrentPeriodEnd = (invoiceSubscription as any).current_period_end;
-            if (!invoiceCurrentPeriodEnd || isNaN(invoiceCurrentPeriodEnd) || invoiceCurrentPeriodEnd <= 0) {
+            const invoiceSubscriptionData = invoiceSubscription as unknown as Stripe.Subscription & { current_period_end: number };
+            const invoiceCurrentPeriodEnd = invoiceSubscriptionData.current_period_end;
+            if (!invoiceCurrentPeriodEnd || invoiceCurrentPeriodEnd <= 0) {
                 processedEvents.add(event.id);
                 return new NextResponse(null, { status: 200 });
             }
@@ -122,20 +126,22 @@ export async function POST(req: Request) {
             }).where(eq(userSubscriptions.stripeSubscriptionId, invoiceSubscription.id));
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Don't return 500 for duplicate events or constraint violations
-        if (error.code === '23505' || error.constraint) {
+        const dbError = error as { code?: string; constraint?: string; message?: string };
+        if (dbError.code === '23505' || dbError.constraint) {
             processedEvents.add(event.id);
             return new NextResponse(null, { status: 200 });
         }
         
         // For any other database errors, also treat as success to avoid endless retries
-        if (error.code && error.code.startsWith('23')) {
+        if (dbError.code && dbError.code.startsWith('23')) {
             processedEvents.add(event.id);
             return new NextResponse(null, { status: 200 });
         }
         
-        return new NextResponse(`Webhook processing error: ${error.message}`, { status: 500 });
+        const errorMessage = dbError.message || 'Unknown error';
+        return new NextResponse(`Webhook processing error: ${errorMessage}`, { status: 500 });
     }
 
     // Mark event as processed after successful handling

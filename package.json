@@ -8,8 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "db:studio": "npx drizzle-kit studio",
-    "db:push": "npx drizzle-kit push:pg",
-    "db:seed": "tsx ./scripts/seed.ts"
+    "db:push": "npx drizzle-kit push",
+    "db:seed": "tsx ./scripts/seed.ts",
+    "db:prod": "tsx ./scripts/prod.ts"
+
   },
   "dependencies": {
     "@clerk/nextjs": "^6.31.9",
