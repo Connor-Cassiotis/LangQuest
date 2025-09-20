@@ -97,7 +97,7 @@ export const challengesProgressRelations = relations(challengeProgress, ({ one }
 export const userProgress = pgTable("user_progress", {
     userId: text("user_id").primaryKey(),
     userName: text("user_name").notNull().default("User"),
-    userImageSrc: text("user_image_src").notNull().default("/mascot.png"),
+    userImageSrc: text("user_image_src").notNull().default("/mascot.svg"),
     activeCourseId: integer("active_course_id").references(() => courses.id, { onDelete: "cascade" }),
     hearts: integer("hearts").notNull().default(5),
     points: integer("points").notNull().default(0),
