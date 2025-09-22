@@ -1,3 +1,10 @@
+/**
+ * Quests Page Component
+ * 
+ * Gamification page displaying user challenges and progress milestones.
+ * Shows XP-based quests with visual progress indicators to motivate continued learning.
+ */
+
 import { FeedWrapper } from "@/components/feed-wrapper";
 import { StickyWrapper } from "@/components/sticky-wrapper";
 import { UserProgress } from "@/components/user-progress";
@@ -8,7 +15,21 @@ import {  } from "@/db/schema";
 import { Progress } from "@/components/ui/progress";
 import { Promo } from "@/components/ui/promo";
 
+/**
+ * Quests page component showing user challenges and milestones
+ * 
+ * Features:
+ * - XP-based quest system with multiple difficulty levels
+ * - Visual progress bars showing completion status
+ * - User progress sidebar with stats
+ * - Promotional content for non-subscribers
+ * - Responsive two-column layout
+ * - Progress validation and redirection
+ * 
+ * @returns Quests page with challenge list and user progress
+ */
 const QuestsPage = async () => {
+    // Define available quests with XP requirements
     const quests = [
         {
             title: "Earn 20 XP",
@@ -31,10 +52,13 @@ const QuestsPage = async () => {
             value: 1000,
         }
     ]
+    
+    // Fetch user data in parallel
     const userSubscriptionsData = getUserSubscription();
     const userProgressData = getUserProgress();
     const [userProgress,userSubscriptions] = await Promise.all([userProgressData,userSubscriptionsData]);
     
+    // Redirect to course selection if no progress
     if (!userProgress || !userProgress.activeCourse) {
         redirect("/courses");
     }
@@ -43,6 +67,7 @@ const QuestsPage = async () => {
     
     return (
         <div className="flex flex-row-reverse gap-[48px] px-6">
+            {/* Right Sidebar - User Progress and Promotions */}
             <StickyWrapper>
                 <UserProgress 
                     activeCourse={userProgress.activeCourse}
@@ -50,10 +75,14 @@ const QuestsPage = async () => {
                     points ={userProgress.points}
                     hasActiveSubscription={!!userSubscriptions?.isActive}
                 />
+                {/* Show promotion only to non-subscribers */}
                 {!isPro && (<Promo />)}
             </StickyWrapper>
+            
+            {/* Main Content - Quest List */}
             <FeedWrapper>
                 <div className="w-full flex flex-col items-center">
+                    {/* Quest Header */}
                     <Image 
                         src="/quests.svg"
                         alt="Quests"
@@ -67,8 +96,11 @@ const QuestsPage = async () => {
                 <p className="text-muted-foreground text-center text-lg mb-6">
                     Complete quests by earning points.
                 </p>
+                
+                {/* Quest List with Progress Bars */}
                 <ul className="w-full">
                     {quests.map((quest) => {
+                        // Calculate progress percentage for each quest
                         const progress = (userProgress.points / quest.value) * 100;
                         return (
                             <div

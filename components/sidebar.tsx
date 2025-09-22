@@ -1,3 +1,10 @@
+/**
+ * Sidebar Navigation Component
+ * 
+ * Main navigation sidebar for the LangQuest application.
+ * Displays the app logo, navigation items, and user authentication controls.
+ */
+
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,9 +16,21 @@ type Props = {
     className?: string;
 };
 
+/**
+ * Sidebar component with navigation links and user controls
+ * 
+ * Features:
+ * - LangQuest logo and branding
+ * - Navigation items (Learn, Leaderboard, Quests, Shop)
+ * - User authentication button with loading state
+ * 
+ * @param className - Optional additional CSS classes
+ * @returns Fixed sidebar navigation component
+ */
 export const Sidebar = ({ className }: Props) => {
     return (
        <div className={cn("flex h-full lg:w-[256px] lg:fixed left-0 top-0 px-4 border-r-2 flex-col", className,)}>
+            {/* Logo and App Title */}
             <Link href="/learn">
             <div className="pt-8 pl-4 pb-7 flex items-center gap-x-3"><Image src="/LangQuest-Logo.svg" height={40} width={40} alt="Mascot" /> 
                 <h1 className ="text-2xl font-extrabold text-green-600 tracking-wide">
@@ -19,12 +38,16 @@ export const Sidebar = ({ className }: Props) => {
                 </h1>
             </div>
             </Link>
+            
+            {/* Navigation Items */}
             <div className="flex flex-col gap-y-2 flex-1">
                 <SidebarItem label="Learn" href="/learn" iconSrc="/learn.svg"/>
                 <SidebarItem label="Leaderboadrd" href="/leaderboard" iconSrc="/leaderboard.svg"/>
                 <SidebarItem label="quests" href="/quests" iconSrc="/quests.svg"/>
                 <SidebarItem label="shop" href="/shop" iconSrc="/shop.svg"/>
             </div>
+            
+            {/* User Authentication Controls */}
             <div className="p-4">
                 <ClerkLoading>
                     <Loader className="h-5 w-5 text-muted-foreground animate-spin" />

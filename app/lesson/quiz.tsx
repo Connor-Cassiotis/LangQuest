@@ -1,3 +1,10 @@
+/**
+ * Quiz Component
+ * 
+ * Interactive quiz component that manages lesson progression, challenge completion,
+ * and user feedback. Handles hearts system, progress tracking, and audio feedback.
+ */
+
 "use client";
 
 import { challengeOptions, challenges } from "@/db/schema";
@@ -19,17 +26,37 @@ import { useHeartsModal } from "@/store/use-hearts-modal";
 import { usePracticeModal } from "@/store/use-practice-modal";
 
 type Props = {
-    initialPercentage: number;
-    initialHearts: number;
-    initialLessonId: number;
+    initialPercentage: number; // Initial lesson completion percentage
+    initialHearts: number; // User's current hearts count
+    initialLessonId: number; // ID of the current lesson
     initialLessonChallenges: (typeof challenges.$inferSelect & {
         completed: boolean;
         challengeOptions: typeof challengeOptions.$inferSelect[];
     })[];
     userSubscription: {
         isActive?: boolean;
-    } | null;
+    } | null; // User's subscription status
 }
+
+/**
+ * Interactive quiz component for lesson challenges
+ * 
+ * Features:
+ * - Challenge progression and completion tracking
+ * - Hearts system with penalties for wrong answers
+ * - Audio feedback for correct/incorrect answers
+ * - Practice mode detection and handling
+ * - Confetti celebration on lesson completion
+ * - Modal integration for hearts and practice
+ * - Progress percentage calculation and display
+ * 
+ * @param initialPercentage - Starting completion percentage
+ * @param initialHearts - User's starting hearts count
+ * @param initialLessonId - Current lesson ID
+ * @param initialLessonChallenges - Array of lesson challenges
+ * @param userSubscription - User's subscription information
+ * @returns Interactive quiz interface
+ */
 export const Quiz = ({
     initialPercentage,
     initialHearts,
@@ -37,14 +64,18 @@ export const Quiz = ({
     initialLessonChallenges,
     userSubscription
 }: Props) => {
+    // Modal hooks for practice and hearts management
     const {open: openPracticeModal} =  usePracticeModal();
     const {open: openHeartsModal} =  useHeartsModal();
 
+    // Show practice modal if lesson is already completed
     useMount(() => {
         if(initialPercentage === 100) {
             openPracticeModal();
         }
     });
+    
+    // Audio and visual feedback setup
     const [finishAudio] = useAudio({src: "finish.mp3", autoPlay: true})
     const { width, height } = useWindowSize();
     const [pending, startTransition] = useTransition();
@@ -52,9 +83,11 @@ export const Quiz = ({
     const router = useRouter();
     const [correctAudio, correctState, correctControls] = useAudio({src: "/correct.wav"})
     const [incorrectAudio, incorrectState, incorrectControls] = useAudio({src: "/incorrect.wav"})
+    
+    // Quiz state management
     const [hearts, setHearts] = useState(initialHearts);
     const [percentage, setPercentage] = useState(() => {
-
+        // Reset percentage to 0 if lesson is already completed (practice mode)
         if (initialPercentage === 100) {
             return 0;
         }
@@ -63,6 +96,7 @@ export const Quiz = ({
     });
     const [challenges] = useState(initialLessonChallenges);
     const [activeIndex, setActiveIndex] = useState(() => {
+        // Start from first uncompleted challenge, or beginning if all completed
         const uncompletedIndex = challenges.findIndex((challenge) => !challenge.completed);
         return uncompletedIndex === -1 ? 0 : uncompletedIndex;
     });
@@ -75,6 +109,7 @@ export const Quiz = ({
         setIsMounted(true);
     }, []);
 
+    // Current challenge and options
     const challenge = challenges[activeIndex];
     const options = challenge?.challengeOptions ?? [];
 
